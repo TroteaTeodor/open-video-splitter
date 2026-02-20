@@ -372,7 +372,6 @@ async function processVideo(segments) {
 async function loadFFmpeg() {
     const { FFmpeg } = FFmpegWASM;
     const { toBlobURL } = FFmpegUtil;
-    ffmpeg = new FFmpeg();
 
     let loadingDots = 0;
     let loadingProgress = 0;
@@ -383,52 +382,52 @@ async function loadFFmpeg() {
         updateProgress(loadingProgress * 0.9, `Loading video processor${dots}`, `Downloading ~30MB${progressText}`);
     }, 400);
 
-    ffmpeg.on('log', ({ message }) => {
-        console.log('FFmpeg:', message);
-    });
-
-    ffmpeg.on('progress', ({ progress, time }) => {
-        if (totalSegments > 0 && currentSegmentIndex < totalSegments) {
-            const segmentProgress = Math.min(progress, 1);
-            const baseProgress = 10 + ((currentSegmentIndex / totalSegments) * 85);
-            const segmentContribution = (segmentProgress / totalSegments) * 85;
-            const totalProgress = baseProgress + segmentContribution;
-
-            const percent = Math.round(segmentProgress * 100);
-            updateProgress(
-                totalProgress,
-                `Processing segment ${currentSegmentIndex + 1} of ${totalSegments} (${percent}%)`,
-                getTimeEstimate(currentSegmentIndex + segmentProgress, totalSegments)
-            );
-        }
-    });
-
     try {
-        // Use CDN with toBlobURL to avoid CORS issues
-        const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
+        ffmpeg = new FFmpeg();
 
-        updateProgress(0, 'Loading video processor...', 'Downloading core files');
+        ffmpeg.on('log', ({ message }) => {
+            console.log('FFmpeg:', message);
+        });
 
+        ffmpeg.on('progress', ({ progress, time }) => {
+            if (totalSegments > 0 && currentSegmentIndex < totalSegments) {
+                const segmentProgress = Math.min(progress, 1);
+                const baseProgress = 10 + ((currentSegmentIndex / totalSegments) * 85);
+                const segmentContribution = (segmentProgress / totalSegments) * 85;
+                const totalProgress = baseProgress + segmentContribution;
+
+                const percent = Math.round(segmentProgress * 100);
+                updateProgress(
+                    totalProgress,
+                    `Processing segment ${currentSegmentIndex + 1} of ${totalSegments} (${percent}%)`,
+                    getTimeEstimate(currentSegmentIndex + segmentProgress, totalSegments)
+                );
+            }
+        });
+
+        updateProgress(5, 'Loading video processor...', 'Downloading core');
+
+        // Use toBlobURL to load core files - avoids CORS issues
         const coreURL = await toBlobURL(
-            `${baseURL}/ffmpeg-core.js`,
+            'lib/ffmpeg-core.js',
             'text/javascript',
             true,
             (e) => {
                 if (e.total > 0) {
-                    loadingProgress = Math.round((e.received / e.total) * 30);
+                    loadingProgress = 5 + Math.round((e.received / e.total) * 10);
                 }
             }
         );
 
-        updateProgress(30, 'Loading video processor...', 'Downloading WASM binary');
+        updateProgress(15, 'Loading video processor...', 'Downloading WASM (30MB)');
 
         const wasmURL = await toBlobURL(
-            `${baseURL}/ffmpeg-core.wasm`,
+            'lib/ffmpeg-core.wasm',
             'application/wasm',
             true,
             (e) => {
                 if (e.total > 0) {
-                    loadingProgress = 30 + Math.round((e.received / e.total) * 70);
+                    loadingProgress = 15 + Math.round((e.received / e.total) * 80);
                 }
             }
         );

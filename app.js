@@ -28,8 +28,7 @@ const startOverBtn = document.getElementById('startOverBtn');
 
 // Preset durations in seconds
 const PRESETS = {
-    instagram: 15,
-    tiktok: 60
+    instagram: 60
 };
 
 // Initialize
@@ -333,10 +332,10 @@ async function loadFFmpeg() {
         updateProgress(10 + (percent * 0.8), `Processing... ${percent}%`);
     });
 
-    // Load FFmpeg core from CDN
+    // Load FFmpeg core from local files
     await ffmpeg.load({
-        coreURL: 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js',
-        wasmURL: 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.wasm'
+        coreURL: './ffmpeg/ffmpeg-core.js',
+        wasmURL: './ffmpeg/ffmpeg-core.wasm'
     });
 }
 

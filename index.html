@@ -2,7 +2,11 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#0f0f1a">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <title>Open Video Splitter</title>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -51,8 +55,10 @@
                         <input type="radio" name="splitMode" value="instagram" checked>
                         <div class="preset-card">
                             <span class="preset-icon">📱</span>
-                            <span class="preset-name">Instagram Stories</span>
-                            <span class="preset-desc">60 second segments</span>
+                            <div class="preset-text">
+                                <span class="preset-name">Instagram Stories</span>
+                                <span class="preset-desc">60 second segments</span>
+                            </div>
                         </div>
                     </label>
 
@@ -60,8 +66,10 @@
                         <input type="radio" name="splitMode" value="custom">
                         <div class="preset-card">
                             <span class="preset-icon">⚙️</span>
-                            <span class="preset-name">Custom</span>
-                            <span class="preset-desc">Set your own timing</span>
+                            <div class="preset-text">
+                                <span class="preset-name">Custom</span>
+                                <span class="preset-desc">Set your own timing</span>
+                            </div>
                         </div>
                     </label>
                 </div>
@@ -100,11 +108,12 @@
 
             <!-- Progress Section -->
             <section class="progress-section hidden" id="progressSection">
-                <h2>Processing...</h2>
+                <div class="progress-spinner"></div>
+                <p class="progress-text" id="progressText">Loading FFmpeg...</p>
                 <div class="progress-bar">
                     <div class="progress-fill" id="progressFill"></div>
                 </div>
-                <p class="progress-text" id="progressText">Loading FFmpeg...</p>
+                <p class="progress-time" id="progressTime"></p>
             </section>
 
             <!-- Results Section -->

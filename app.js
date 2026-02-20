@@ -2,7 +2,12 @@
 let ffmpeg = null;
 let videoFile = null;
 let videoDuration = 0;
+let videoExtension = 'mp4';
+let videoMimeType = 'video/mp4';
 let splitSegments = [];
+let processingStartTime = null;
+let currentSegmentIndex = 0;
+let totalSegments = 0;
 
 // DOM Elements
 const uploadArea = document.getElementById('uploadArea');
@@ -22,6 +27,7 @@ const timestampsInput = document.getElementById('timestampsInput');
 const splitBtn = document.getElementById('splitBtn');
 const progressFill = document.getElementById('progressFill');
 const progressText = document.getElementById('progressText');
+const progressTime = document.getElementById('progressTime');
 const resultsGrid = document.getElementById('resultsGrid');
 const downloadAllBtn = document.getElementById('downloadAllBtn');
 const startOverBtn = document.getElementById('startOverBtn');
@@ -96,6 +102,28 @@ function handleFileSelect(e) {
 
 function processFile(file) {
     videoFile = file;
+
+    // Detect file extension and mime type
+    const fileName = file.name;
+    const ext = fileName.substring(fileName.lastIndexOf('.')).toLowerCase();
+
+    // Map extensions to mime types
+    const mimeTypes = {
+        '.mp4': 'video/mp4',
+        '.mov': 'video/quicktime',
+        '.m4v': 'video/x-m4v',
+        '.webm': 'video/webm',
+        '.mkv': 'video/x-matroska',
+        '.avi': 'video/x-msvideo',
+        '.3gp': 'video/3gpp',
+        '.mts': 'video/mp2t',
+        '.m2ts': 'video/mp2t',
+        '.ts': 'video/mp2t'
+    };
+
+    // Use original extension or default to mp4
+    videoExtension = ext || '.mp4';
+    videoMimeType = mimeTypes[videoExtension] || file.type || 'video/mp4';
 
     // Create object URL for preview
     const url = URL.createObjectURL(file);
@@ -256,43 +284,56 @@ async function processVideo(segments) {
     previewSection.classList.add('hidden');
     progressSection.classList.remove('hidden');
 
+    totalSegments = segments.length;
+    currentSegmentIndex = 0;
+
     try {
         // Load FFmpeg if not already loaded
         if (!ffmpeg) {
-            updateProgress(0, 'Loading FFmpeg (this may take a moment)...');
+            updateProgress(0, 'Loading video processor...', 'First time may take 30-60 seconds');
             await loadFFmpeg();
         }
 
-        updateProgress(10, 'Reading video file...');
+        updateProgress(5, 'Reading video file...', 'Preparing your video');
 
-        // Read the input file
+        // Start timing after FFmpeg is loaded
+        processingStartTime = Date.now();
+
+        // Read the input file - use original extension to preserve format
+        const inputFileName = 'input' + videoExtension;
         const { fetchFile } = FFmpegUtil;
         const inputData = await fetchFile(videoFile);
-        await ffmpeg.writeFile('input.mp4', inputData);
+
+        updateProgress(8, 'Loading video into memory...', `File size: ${formatFileSize(videoFile.size)}`);
+        await ffmpeg.writeFile(inputFileName, inputData);
 
         splitSegments = [];
-        const totalSegments = segments.length;
 
         for (let i = 0; i < segments.length; i++) {
+            currentSegmentIndex = i;
             const segment = segments[i];
-            const outputName = `segment_${String(i + 1).padStart(3, '0')}.mp4`;
+            const outputName = `segment_${String(i + 1).padStart(3, '0')}${videoExtension}`;
 
-            const progress = 10 + ((i / totalSegments) * 80);
-            updateProgress(progress, `Processing segment ${i + 1} of ${totalSegments}...`);
+            const baseProgress = 10 + ((i / totalSegments) * 85);
+            const segmentTime = formatTime(segment.start) + ' - ' + formatTime(segment.end);
+            updateProgress(baseProgress, `Cutting segment ${i + 1} of ${totalSegments}`, segmentTime);
 
             // Run FFmpeg command to extract segment
+            // -ss before -i = input seeking (fast), -c copy = no re-encoding (fastest)
             await ffmpeg.exec([
-                '-i', 'input.mp4',
                 '-ss', segment.start.toString(),
+                '-i', inputFileName,
                 '-t', segment.duration.toString(),
                 '-c', 'copy',
-                '-avoid_negative_ts', '1',
+                '-avoid_negative_ts', 'make_zero',
+                '-map', '0',
+                '-movflags', '+faststart',
                 outputName
             ]);
 
             // Read the output file
             const data = await ffmpeg.readFile(outputName);
-            const blob = new Blob([data.buffer], { type: 'video/mp4' });
+            const blob = new Blob([data.buffer], { type: videoMimeType });
 
             splitSegments.push({
                 name: outputName,
@@ -304,17 +345,22 @@ async function processVideo(segments) {
 
             // Clean up the output file
             await ffmpeg.deleteFile(outputName);
+
+            // Update progress after segment complete
+            const completeProgress = 10 + (((i + 1) / totalSegments) * 85);
+            updateProgress(completeProgress, `Completed segment ${i + 1} of ${totalSegments}`, getTimeEstimate(i + 1, totalSegments));
         }
 
         // Clean up input file
-        await ffmpeg.deleteFile('input.mp4');
+        await ffmpeg.deleteFile(inputFileName);
 
-        updateProgress(100, 'Complete!');
+        const totalTime = formatDuration((Date.now() - processingStartTime) / 1000);
+        updateProgress(100, 'Complete!', `Finished in ${totalTime}`);
 
         // Show results
         setTimeout(() => {
             showResults();
-        }, 500);
+        }, 800);
 
     } catch (error) {
         console.error('Error processing video:', error);
@@ -327,9 +373,33 @@ async function loadFFmpeg() {
     const { FFmpeg } = FFmpegWASM;
     ffmpeg = new FFmpeg();
 
-    ffmpeg.on('progress', ({ progress }) => {
-        const percent = Math.round(progress * 100);
-        updateProgress(10 + (percent * 0.8), `Processing... ${percent}%`);
+    let loadingDots = 0;
+    const loadingInterval = setInterval(() => {
+        loadingDots = (loadingDots + 1) % 4;
+        const dots = '.'.repeat(loadingDots);
+        updateProgress(0, `Loading video processor${dots}`, 'Downloading ~30MB, please wait');
+    }, 500);
+
+    ffmpeg.on('log', ({ message }) => {
+        // Log for debugging
+        console.log('FFmpeg:', message);
+    });
+
+    ffmpeg.on('progress', ({ progress, time }) => {
+        // This fires during actual encoding/processing
+        if (totalSegments > 0 && currentSegmentIndex < totalSegments) {
+            const segmentProgress = Math.min(progress, 1);
+            const baseProgress = 10 + ((currentSegmentIndex / totalSegments) * 85);
+            const segmentContribution = (segmentProgress / totalSegments) * 85;
+            const totalProgress = baseProgress + segmentContribution;
+
+            const percent = Math.round(segmentProgress * 100);
+            updateProgress(
+                totalProgress,
+                `Processing segment ${currentSegmentIndex + 1} of ${totalSegments} (${percent}%)`,
+                getTimeEstimate(currentSegmentIndex + segmentProgress, totalSegments)
+            );
+        }
     });
 
     // Load FFmpeg core from local files
@@ -337,11 +407,44 @@ async function loadFFmpeg() {
         coreURL: './ffmpeg/ffmpeg-core.js',
         wasmURL: './ffmpeg/ffmpeg-core.wasm'
     });
+
+    clearInterval(loadingInterval);
 }
 
-function updateProgress(percent, text) {
+function getTimeEstimate(completed, total) {
+    if (!processingStartTime || completed === 0) return '';
+
+    const elapsed = (Date.now() - processingStartTime) / 1000;
+    const avgTimePerSegment = elapsed / completed;
+    const remaining = (total - completed) * avgTimePerSegment;
+
+    if (remaining < 1) return 'Almost done...';
+
+    return `~${formatDuration(remaining)} remaining`;
+}
+
+function formatDuration(seconds) {
+    if (seconds < 60) {
+        return `${Math.round(seconds)}s`;
+    }
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.round(seconds % 60);
+    return `${mins}m ${secs}s`;
+}
+
+function formatFileSize(bytes) {
+    if (bytes < 1024 * 1024) {
+        return (bytes / 1024).toFixed(1) + ' KB';
+    }
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+function updateProgress(percent, text, subtext = '') {
     progressFill.style.width = `${percent}%`;
     progressText.textContent = text;
+    if (progressTime) {
+        progressTime.textContent = subtext;
+    }
 }
 
 function showResults() {
@@ -417,6 +520,11 @@ function startOver() {
         URL.revokeObjectURL(segment.url);
     });
     splitSegments = [];
+    processingStartTime = null;
+    currentSegmentIndex = 0;
+    totalSegments = 0;
+    videoExtension = 'mp4';
+    videoMimeType = 'video/mp4';
 
     // Reset UI
     resultsSection.classList.add('hidden');

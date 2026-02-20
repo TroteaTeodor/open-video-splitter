@@ -242,6 +242,12 @@ main {
     font-size: 2rem;
 }
 
+.preset-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
 .preset-name {
     font-weight: 600;
     font-size: 1rem;
@@ -348,6 +354,23 @@ main {
 
 .btn-primary:active {
     transform: translateY(0);
+    transition-duration: 0.1s;
+}
+
+/* Better touch feedback */
+@media (hover: none) {
+    .btn-primary:active {
+        transform: scale(0.98);
+        box-shadow: 0 2px 10px rgba(168, 85, 247, 0.3);
+    }
+
+    .preset-card:active {
+        transform: scale(0.98);
+    }
+
+    .upload-area:active {
+        transform: scale(0.99);
+    }
 }
 
 .btn-primary:disabled {
@@ -381,9 +404,25 @@ main {
     box-shadow: 0 8px 32px var(--glass-shadow);
 }
 
-.progress-section h2 {
-    margin-bottom: 2rem;
-    font-weight: 600;
+.progress-spinner {
+    width: 48px;
+    height: 48px;
+    border: 3px solid rgba(255, 255, 255, 0.1);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 1.5rem;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.progress-text {
+    font-size: 1.1rem;
+    font-weight: 500;
+    margin-bottom: 1.5rem;
+    color: var(--text);
 }
 
 .progress-bar {
@@ -403,9 +442,10 @@ main {
     box-shadow: 0 0 20px var(--accent-glow);
 }
 
-.progress-text {
+.progress-time {
     color: var(--text-muted);
-    font-size: 0.95rem;
+    font-size: 0.9rem;
+    min-height: 1.4em;
 }
 
 /* Results Section */
@@ -523,39 +563,253 @@ footer p {
     display: none !important;
 }
 
-/* Responsive */
+/* Responsive - Tablet */
+@media (max-width: 768px) {
+    .container {
+        padding: 1.25rem;
+    }
+
+    .results-grid {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    }
+}
+
+/* Responsive - Mobile */
 @media (max-width: 600px) {
     .container {
         padding: 1rem;
+        padding-bottom: 2rem;
+    }
+
+    header {
+        margin-bottom: 1.5rem;
     }
 
     header h1 {
-        font-size: 1.75rem;
+        font-size: 1.6rem;
+    }
+
+    .subtitle {
+        font-size: 0.95rem;
     }
 
     .upload-area {
-        padding: 3rem 1.5rem;
+        padding: 2.5rem 1.25rem;
+        border-radius: 20px;
     }
 
-    .preset-options {
-        grid-template-columns: 1fr;
+    .upload-icon svg {
+        width: 48px;
+        height: 48px;
+    }
+
+    .upload-area p {
+        font-size: 1rem;
+    }
+
+    .video-container {
+        border-radius: 16px;
+    }
+
+    .video-container video {
+        max-height: 280px;
     }
 
     .video-info {
         flex-direction: column;
         gap: 0.25rem;
+        font-size: 0.9rem;
+    }
+
+    .options-section {
+        padding: 1.5rem;
+        border-radius: 20px;
+        margin-top: 1.5rem;
+    }
+
+    .options-section h2 {
+        font-size: 1.15rem;
+        margin-bottom: 1.25rem;
+    }
+
+    .preset-options {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .preset-card {
+        padding: 1.25rem 1rem;
+        border-radius: 14px;
+        flex-direction: row;
+        justify-content: flex-start;
+        align-items: center;
+        gap: 1rem;
+        text-align: left;
+    }
+
+    .preset-icon {
+        font-size: 1.75rem;
+        flex-shrink: 0;
+    }
+
+    .preset-text {
+        gap: 0.15rem;
+    }
+
+    .preset-name {
+        font-size: 0.95rem;
+    }
+
+    .preset-desc {
+        font-size: 0.8rem;
+    }
+
+    .custom-options {
+        padding: 1.25rem;
+        border-radius: 14px;
+        margin-bottom: 1.5rem;
+    }
+
+    .custom-mode-toggle {
+        flex-direction: column;
+        gap: 0.75rem;
+        margin-bottom: 1.25rem;
+    }
+
+    .toggle-option {
+        padding: 0.5rem 0;
+    }
+
+    .interval-input input,
+    .timestamps-input input {
+        padding: 1rem;
+        font-size: 16px; /* Prevents zoom on iOS */
+        border-radius: 10px;
+    }
+
+    .btn {
+        padding: 1rem 1.5rem;
+        border-radius: 12px;
+        font-size: 0.95rem;
+    }
+
+    .btn-secondary {
+        padding: 0.875rem 1.25rem;
+    }
+
+    .progress-section {
+        padding: 2rem 1.5rem;
+        border-radius: 20px;
+    }
+
+    .progress-spinner {
+        width: 40px;
+        height: 40px;
+        margin-bottom: 1rem;
+    }
+
+    .progress-text {
+        font-size: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .progress-time {
+        font-size: 0.85rem;
+    }
+
+    .results-section {
+        padding: 1.5rem;
+        border-radius: 20px;
+    }
+
+    .results-section h2 {
+        font-size: 1.15rem;
+    }
+
+    .results-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+    }
+
+    .result-item {
+        border-radius: 12px;
+    }
+
+    .result-item video {
+        aspect-ratio: 9/16;
+    }
+
+    .result-info {
+        padding: 0.6rem;
+        flex-direction: column;
+        gap: 0.5rem;
+        align-items: stretch;
+    }
+
+    .result-name {
+        font-size: 0.85rem;
+        text-align: center;
+    }
+
+    .result-download {
+        width: 100%;
+        padding: 0.6rem;
+        font-size: 0.8rem;
+        text-align: center;
     }
 
     .results-actions {
         flex-direction: column;
+        gap: 0.75rem;
     }
 
     .results-actions .btn {
         max-width: none;
     }
 
-    .custom-mode-toggle {
-        flex-direction: column;
-        gap: 1rem;
+    footer {
+        margin-top: 2rem;
+        padding-top: 1.5rem;
+        font-size: 0.8rem;
+    }
+
+    footer p {
+        margin-bottom: 0.4rem;
+    }
+}
+
+/* Small phones */
+@media (max-width: 380px) {
+    .container {
+        padding: 0.75rem;
+    }
+
+    header h1 {
+        font-size: 1.4rem;
+    }
+
+    .upload-area {
+        padding: 2rem 1rem;
+    }
+
+    .options-section,
+    .progress-section,
+    .results-section {
+        padding: 1.25rem;
+    }
+
+    .results-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 0.5rem;
+    }
+}
+
+/* Safe area for notched phones */
+@supports (padding: max(0px)) {
+    .container {
+        padding-left: max(1rem, env(safe-area-inset-left));
+        padding-right: max(1rem, env(safe-area-inset-right));
+        padding-bottom: max(2rem, env(safe-area-inset-bottom));
     }
 }

@@ -371,22 +371,23 @@ async function processVideo(segments) {
 
 async function loadFFmpeg() {
     const { FFmpeg } = FFmpegWASM;
+    const { toBlobURL } = FFmpegUtil;
     ffmpeg = new FFmpeg();
 
     let loadingDots = 0;
+    let loadingProgress = 0;
     const loadingInterval = setInterval(() => {
         loadingDots = (loadingDots + 1) % 4;
         const dots = '.'.repeat(loadingDots);
-        updateProgress(0, `Loading video processor${dots}`, 'Downloading ~30MB, please wait');
-    }, 500);
+        const progressText = loadingProgress > 0 ? ` (${loadingProgress}%)` : '';
+        updateProgress(loadingProgress * 0.9, `Loading video processor${dots}`, `Downloading ~30MB${progressText}`);
+    }, 400);
 
     ffmpeg.on('log', ({ message }) => {
-        // Log for debugging
         console.log('FFmpeg:', message);
     });
 
     ffmpeg.on('progress', ({ progress, time }) => {
-        // This fires during actual encoding/processing
         if (totalSegments > 0 && currentSegmentIndex < totalSegments) {
             const segmentProgress = Math.min(progress, 1);
             const baseProgress = 10 + ((currentSegmentIndex / totalSegments) * 85);
@@ -402,11 +403,45 @@ async function loadFFmpeg() {
         }
     });
 
-    // Load FFmpeg core from local files
-    await ffmpeg.load({
-        coreURL: './ffmpeg/ffmpeg-core.js',
-        wasmURL: './ffmpeg/ffmpeg-core.wasm'
-    });
+    try {
+        // Use CDN with toBlobURL to avoid CORS issues
+        const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
+
+        updateProgress(0, 'Loading video processor...', 'Downloading core files');
+
+        const coreURL = await toBlobURL(
+            `${baseURL}/ffmpeg-core.js`,
+            'text/javascript',
+            true,
+            (e) => {
+                if (e.total > 0) {
+                    loadingProgress = Math.round((e.received / e.total) * 30);
+                }
+            }
+        );
+
+        updateProgress(30, 'Loading video processor...', 'Downloading WASM binary');
+
+        const wasmURL = await toBlobURL(
+            `${baseURL}/ffmpeg-core.wasm`,
+            'application/wasm',
+            true,
+            (e) => {
+                if (e.total > 0) {
+                    loadingProgress = 30 + Math.round((e.received / e.total) * 70);
+                }
+            }
+        );
+
+        updateProgress(95, 'Loading video processor...', 'Initializing');
+
+        await ffmpeg.load({ coreURL, wasmURL });
+
+    } catch (error) {
+        clearInterval(loadingInterval);
+        console.error('FFmpeg load error:', error);
+        throw new Error('Failed to load video processor. Please refresh and try again.');
+    }
 
     clearInterval(loadingInterval);
 }

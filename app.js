@@ -371,16 +371,13 @@ async function processVideo(segments) {
 
 async function loadFFmpeg() {
     const { FFmpeg } = FFmpegWASM;
-    const { toBlobURL } = FFmpegUtil;
 
     let loadingDots = 0;
-    let loadingProgress = 0;
     const loadingInterval = setInterval(() => {
         loadingDots = (loadingDots + 1) % 4;
         const dots = '.'.repeat(loadingDots);
-        const progressText = loadingProgress > 0 ? ` (${loadingProgress}%)` : '';
-        updateProgress(loadingProgress * 0.9, `Loading video processor${dots}`, `Downloading ~30MB${progressText}`);
-    }, 400);
+        updateProgress(50, `Loading video processor${dots}`, 'First load may take 30-60 seconds');
+    }, 500);
 
     try {
         ffmpeg = new FFmpeg();
@@ -405,36 +402,15 @@ async function loadFFmpeg() {
             }
         });
 
-        updateProgress(5, 'Loading video processor...', 'Downloading core');
+        updateProgress(10, 'Loading video processor...', 'Downloading WASM (31MB)');
 
-        // Use toBlobURL to load core files - avoids CORS issues
-        const coreURL = await toBlobURL(
-            'lib/ffmpeg-core.js',
-            'text/javascript',
-            true,
-            (e) => {
-                if (e.total > 0) {
-                    loadingProgress = 5 + Math.round((e.received / e.total) * 10);
-                }
-            }
-        );
+        // Load directly from local files
+        await ffmpeg.load({
+            coreURL: 'lib/ffmpeg-core.js',
+            wasmURL: 'lib/ffmpeg-core.wasm'
+        });
 
-        updateProgress(15, 'Loading video processor...', 'Downloading WASM (30MB)');
-
-        const wasmURL = await toBlobURL(
-            'lib/ffmpeg-core.wasm',
-            'application/wasm',
-            true,
-            (e) => {
-                if (e.total > 0) {
-                    loadingProgress = 15 + Math.round((e.received / e.total) * 80);
-                }
-            }
-        );
-
-        updateProgress(95, 'Loading video processor...', 'Initializing');
-
-        await ffmpeg.load({ coreURL, wasmURL });
+        updateProgress(100, 'Video processor ready!', '');
 
     } catch (error) {
         clearInterval(loadingInterval);
